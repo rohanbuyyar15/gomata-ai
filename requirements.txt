@@ -1,0 +1,11 @@
+# Conceptual requirements for a Python-based ML backend
+# This is provided for users who want to transition from Gemini to a custom model.
+
+fastapi==0.104.1
+uvicorn==0.24.0
+python-multipart==0.0.6
+tensorflow==2.15.0
+numpy==1.26.2
+pillow==10.1.0
+google-generativeai==0.3.1
+python-dotenv==1.0.0
