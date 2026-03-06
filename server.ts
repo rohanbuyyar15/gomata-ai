@@ -27,10 +27,10 @@ app.use((req, res, next) => {
 // Use the SDK from your dependencies
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
-app.use(express.static(path.join(__dirname, 'dist')));
+app.use(express.static(path.join(__dirname, 'gomata-ai')));
 
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+  res.sendFile(path.join(__dirname, 'gomata-ai', 'index.html'));
 });
 
 app.post('/api/predict', upload.single('image'), async (req, res) => {
