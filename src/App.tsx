@@ -33,7 +33,7 @@ export default function App() {
     formData.append('image', file);
 
     try {
-      const response = await fetch('https://gomata-ai.onrender.com/api/predict', {
+      const response = await fetch('/api/predict', {
         method: 'POST',
         body: formData,
       });
