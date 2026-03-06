@@ -27,8 +27,10 @@ app.use((req, res, next) => {
 // Use the SDK from your dependencies
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
-app.get('/', (req, res) => {
-  res.send("Server is alive. Send POST requests to /api/predict");
+app.use(express.static(path.join(__dirname, 'dist')));
+
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
 app.post('/api/predict', upload.single('image'), async (req, res) => {
