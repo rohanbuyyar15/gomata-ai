@@ -1,79 +1,56 @@
-import path from 'path';
 import express from 'express';
 import multer from 'multer';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import dotenv from 'dotenv';
 import cors from 'cors';
 
+// --- THE FIX FOR __dirname IN ES MODULES ---
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+// -------------------------------------------
+
 dotenv.config();
 
 const app = express();
 const upload = multer();
 
-// 1. Fixed CORS - explicit for your local development
-app.use(cors({
-  origin: '*', 
-  methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type']
-}));
-
+app.use(cors());
 app.use(express.json());
 
-// 2. CSP Headers - only needed if you're hitting the API directly from a browser tab
-app.use((req, res, next) => {
-  res.setHeader("Content-Security-Policy", "default-src 'self'; connect-src 'self' http://localhost:5000 http://localhost:5173;");
-  next();
-});
-
-// Use the SDK from your dependencies
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
+app.post('/api/predict', upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+
+    const model = genAI.getGenerativeModel({ 
+      model: "gemini-2.5-flash", 
+      generationConfig: { responseMimeType: "application/json" }
+    });
+
+    const prompt = `Identify the cattle breed which you see in the Image . 
+    Return JSON: {"breed": "Name", "confidence": 0.95, "is_cattle_or_buffalo": true}`;
+
+    const imageParts = [{
+      inlineData: { data: req.file.buffer.toString("base64"), mimeType: req.file.mimetype }
+    }];
+
+    const result = await model.generateContent([prompt, ...imageParts]);
+    res.json(JSON.parse(result.response.text()));
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Serve the React UI
 app.use(express.static(path.join(__dirname, 'dist')));
 
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
-app.post('/api/predict', upload.single('image'), async (req, res) => {
-  try {
-    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-
-    // FIX: Using 'gemini-1.5-flash' (2.5 doesn't exist yet)
-    // ADDED: generationConfig forces the output to be valid JSON
-    const model = genAI.getGenerativeModel({ 
-      model: "gemini-2.5-flash",
-      generationConfig: { responseMimeType: "application/json" }
-    });
-
-    const prompt = `Identify the cattle breed from this list: 
-    "Gir Cow", "Sahiwal Cow", "Red Sindhi Cow", "Tharparkar Cow", "Ongole Cow", 
-    "Murrah Buffalo", "Jaffarabadi Buffalo", "Surti Buffalo", "Mehsana Buffalo". 
-    
-    Return a JSON object: 
-    {
-      "breed": "Name", 
-      "confidence": 0.95, 
-      "is_cattle_or_buffalo": true
-    }`;
-
-    const imageParts = [{
-      inlineData: { 
-        data: req.file.buffer.toString("base64"), 
-        mimeType: req.file.mimetype 
-      }
-    }];
-
-    const result = await model.generateContent([prompt, ...imageParts]);
-    const response = await result.response;
-    const text = response.text();
-    
-    // With responseMimeType set, 'text' is guaranteed to be a JSON string
-    res.json(JSON.parse(text));
-
-  } catch (error: any) {
-    console.error("Error:", error.message);
-    res.status(500).json({ error: "Analysis failed: " + error.message });
-  }
-});
-
-app.listen(5000, () => console.log('🚀 API listening on port 5000'));
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, '0.0.0.0', () => console.log(`🚀 Live on port ${PORT}`));
